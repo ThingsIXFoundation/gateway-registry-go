@@ -18,34 +18,28 @@
 
 set -e
 
-THINGS_TOKEN_SMART_CONTRACT_REPO=git@github.com:ThingsIXFoundation/smart-contracts-evm.git
-
 generate_bindings() {
-  local work_dir=$1
-  local pkg=$2
-  local artifact_file=$(find $work_dir/artifacts -name "$3.json")
-  local abi_file="$work_dir/$3.abi"
+  local work_dir=$(mktemp -d /tmp/thingsix-router-registry-XXXXX)
+  local artifact_file=$(find $1/artifacts -name "$3.json")
+  local pkg=$2  
+  local abi_file="$work_dir/router_registry.abi"  
 
-  # extract abi from artifacts file
+  echo Extract abi from artifact file
   jq .abi "$artifact_file" > "$abi_file"
 
-  echo "Generate bindings for package $pkg"
-  
+  echo Generate bindings for package $pkg
   abigen --abi "$abi_file" --pkg $pkg --out "bindings.go"
+
+  echo Delete work directory
+  rm -rf $work_dir
 }
 
-# clone smart contract repo and install dependencies
-work_dir=$(mktemp -d /tmp/thingsix-tokens-XXXXX)
-echo "Clone smart contract repo in work directory $work_dir"
-git clone $THINGS_TOKEN_SMART_CONTRACT_REPO $work_dir --quiet
+smart_contract_project=$1
+echo Use smart contract project in ${smart_contract_project}
 
-# generate go-bindings for gateway registry contract
-generate_bindings $work_dir gateway_registry GatewayRegistry
-
-# cleanup work directory
-echo "delete work directory"
-rm -rf $work_dir
+# generate go-bindings for router registry contract
+generate_bindings ${smart_contract_project} gateway_registry GatewayRegistry
 
 # install dependencies
-echo "tidy go dependencies"
+echo Cleanup go dependencies
 go mod tidy
